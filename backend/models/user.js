@@ -1,19 +1,32 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
+    // --- Common Fields ---
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     role: {
         type: String,
-        // 🟢 UPDATED: Added 'principal' to the allowed roles list
         enum: ['student', 'faculty', 'admin', 'principal'],
-        default: 'student'
+        default: 'student',
+        required: true
     },
-    // Specific Fields
-    enrollmentNo: { type: String }, // For Students
-    department: { type: String }, // For Faculty
-    designation: { type: String } // For Faculty
+    department: { type: String, required: true },
+
+    linkedIn: { type: String, required: true },
+    achievements: { type: String, required: true },
+
+    // 🟢 NEW: Profile Picture
+    profilePicture: { type: String, default: '' },
+
+    // --- Student Specific ---
+    enrollmentNo: { type: String },
+    studyProgram: { type: String, enum: ['BE', 'ME'] },
+    semester: { type: Number },
+
+    // --- Faculty Specific ---
+    qualification: { type: String, enum: ['MTech', 'PhD'] },
+    designation: { type: String }
 }, { timestamps: true });
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.models.User || mongoose.model('User', UserSchema);

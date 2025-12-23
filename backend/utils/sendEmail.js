@@ -12,11 +12,11 @@ const sendEmail = async(options) => {
 
     // 2. Define the Email Options
     const mailOptions = {
-        from: `LDCE Portal <${process.env.EMAIL_USER}>`,
+        from: `"LDCE Research Portal" <${process.env.EMAIL_USER}>`, // System Name
         to: options.to,
+        replyTo: options.replyTo, // 🟢 CRITICAL: Faculty replies go to Student
         subject: options.subject,
-        text: options.text,
-        html: options.html // Allows bold text and formatting
+        html: options.html
     };
 
     // 3. Send the Email

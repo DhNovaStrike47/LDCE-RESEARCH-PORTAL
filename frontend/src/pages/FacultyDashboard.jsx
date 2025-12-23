@@ -1,185 +1,244 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-import { Check, X, FileText, Eye, Search, Filter } from 'lucide-react'; 
-import API_URL from '../api'; // 🟢 Import API_URL
+import IncomingProposals from '../components/IncomingProposals'; 
+import ApprovedTeams from '../components/ApprovedTeams'; 
+import { Check, X, FileText, Eye, Search, Briefcase, Trash2, Inbox, Users } from 'lucide-react'; 
+import API_URL from '../api'; 
 
 const FacultyDashboard = () => {
     const [projects, setProjects] = useState([]);
+    const [labRequests, setLabRequests] = useState([]); 
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null); 
     const [selectedPdf, setSelectedPdf] = useState(null);
+    const [activeTab, setActiveTab] = useState('projects'); 
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
-    const [filterDept, setFilterDept] = useState('All');
 
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
-    useEffect(() => {
-        fetchProjects();
-    }, []);
-
-    const fetchProjects = async () => {
+    const fetchData = async () => {
         try {
-            // 🟢 Use API_URL
-            const res = await axios.get(`${API_URL}/api/projects`, {
+            setLoading(true);
+            const projRes = await axios.get(`${API_URL}/api/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProjects(res.data);
+            setProjects(projRes.data);
+
+            const labRes = await axios.get(`${API_URL}/api/labs/all`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLabRequests(labRes.data);
             setLoading(false);
         } catch (err) {
-            console.error(err);
+            console.error("Fetch Error:", err);
             setLoading(false);
         }
     };
 
-    const filteredProjects = projects.filter(project => {
-        const matchesSearch = 
-            project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (project.student?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'All' || project.status === filterStatus;
-        const matchesDept = filterDept === 'All' || project.department === filterDept;
-        return matchesSearch && matchesStatus && matchesDept;
-    });
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleProjectAction = async (id, status) => {
+        if(!window.confirm(`Confirm ${status} for this project?`)) return;
+        setActionLoading(id);
+        try {
+            await axios.put(`${API_URL}/api/projects/approve/${id}`, 
+                { status }, { headers: { Authorization: `Bearer ${token}` } }
+            );
+            fetchData(); 
+        } catch (err) { alert("Status update failed"); } 
+        finally { setActionLoading(null); }
+    };
+
+    const handleDeleteProject = async (id) => {
+        if(!window.confirm("⚠️ Permanent Action: Remove project from repository?")) return;
+        setActionLoading(id);
+        try {
+            await axios.delete(`${API_URL}/api/projects/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchData();
+        } catch (err) { alert("Delete failed"); }
+        finally { setActionLoading(null); }
+    };
+
+    const handleLabAction = async (id, status) => {
+        if(!window.confirm(`Confirm ${status} for this allocation?`)) return;
+        setActionLoading(id);
+        try {
+            await axios.put(`${API_URL}/api/labs/approve/${id}`, 
+                { status }, { headers: { Authorization: `Bearer ${token}` } }
+            );
+            fetchData(); 
+        } catch (err) { alert("Status update failed"); } 
+        finally { setActionLoading(null); }
+    };
 
     const handleViewPdf = async (fileUrl) => {
         if (!fileUrl) return;
         const filename = fileUrl.replace(/^.*[\\\/]/, '');
         try {
-            // 🟢 Use API_URL
             const response = await axios.get(`${API_URL}/api/projects/file/${filename}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob' 
             });
             const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            setSelectedPdf(pdfUrl);
-        } catch (err) {
-            alert("❌ Access Denied: Secure Document Load Failed");
-        }
+            setSelectedPdf(URL.createObjectURL(pdfBlob));
+        } catch (err) { alert("Document access failed"); }
     };
 
-    const handleAction = async (id, status) => {
-        if(!window.confirm(`Are you sure you want to ${status} this project?`)) return;
-        setActionLoading(id);
-        try {
-            // 🟢 Use API_URL
-            await axios.put(`${API_URL}/api/projects/approve/${id}`, 
-                { status }, { headers: { Authorization: `Bearer ${token}` } }
-            );
-            alert(`Project ${status} Successfully!`);
-            fetchProjects(); 
-        } catch (err) { alert("Error updating status"); } 
-        finally { setActionLoading(null); }
-    };
+    const filteredProjects = projects.filter(p => 
+        (filterStatus === 'All' || p.status === filterStatus) &&
+        (p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         (p.student && p.student.name && p.student.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
 
-    if (loading) return <div className="text-center mt-20 text-xl font-bold">Loading Projects...</div>;
+    const filteredLabs = labRequests.filter(l => 
+        (filterStatus === 'All' || l.status === filterStatus) &&
+        (l.labName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         (l.student && l.student.name && l.student.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+
+    if (loading) return (
+        <div className="flex items-center justify-center min-h-screen bg-[#F8FAFC]">
+            <div className="animate-pulse text-slate-400 font-medium uppercase tracking-[0.2em] text-xs">Syncing Workspace...</div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-10">
+        <div className="min-h-screen bg-[#F8FAFC] pb-10 font-sans">
             <Navbar />
             <div className="container mx-auto px-6 mt-10">
-                <h1 className="text-3xl font-bold text-blue-900 mb-6 border-b pb-4 flex items-center gap-3">
-                    <FileText /> Faculty Dashboard
-                </h1>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <div className="relative w-full md:w-1/2">
-                        <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                        <input 
-                            type="text" 
-                            placeholder="Search by Student Name or Project Title..." 
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                
+                {/* Refined Navigation Header */}
+                <div className="flex flex-col md:flex-row justify-between items-end mb-8 border-b border-slate-200 pb-6 gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-[#0B0F19] tracking-tight flex items-center gap-2">
+                            <Briefcase size={24} className="text-[#6366F1]"/> Faculty Command Center
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-1">Manage institutional research, resources, and scholar collaborations.</p>
                     </div>
-                    <div className="flex gap-4 w-full md:w-auto">
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-3 text-gray-400" size={16} />
-                            <select 
-                                className="pl-10 pr-4 py-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                <option value="All">All Status</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                            </select>
-                        </div>
-                        <select 
-                            className="px-4 py-2 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                            value={filterDept}
-                            onChange={(e) => setFilterDept(e.target.value)}
-                        >
-                            <option value="All">All Departments</option>
-                            <option value="Information Technology">IT</option>
-                            <option value="Computer Engineering">Computer</option>
-                            <option value="Civil Engineering">Civil</option>
-                            <option value="Mechanical Engineering">Mechanical</option>
-                        </select>
+                    
+                    <div className="flex bg-slate-200 p-1 rounded-xl shadow-inner border border-slate-300">
+                        <button onClick={() => setActiveTab('projects')} className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] uppercase tracking-wider transition-all ${activeTab === 'projects' ? 'bg-white text-[#0B0F19] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            Submissions ({projects.filter(p=>p.status==='Pending').length})
+                        </button>
+                        <button onClick={() => setActiveTab('labs')} className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] uppercase tracking-wider transition-all ${activeTab === 'labs' ? 'bg-white text-[#0B0F19] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            Labs ({labRequests.filter(l=>l.status==='Pending').length})
+                        </button>
+                        <button onClick={() => setActiveTab('incoming')} className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${activeTab === 'incoming' ? 'bg-[#6366F1] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <Inbox size={12}/> Incoming
+                        </button>
+                        <button onClick={() => setActiveTab('approved')} className={`px-4 py-1.5 rounded-lg font-semibold text-[11px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${activeTab === 'approved' ? 'bg-[#10B981] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                            <Users size={12}/> My Team
+                        </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.length === 0 ? (
-                        <div className="col-span-3 text-center py-20 text-gray-400 italic">
-                            No projects match your search filters.
+                {/* Filters */}
+                {(activeTab === 'projects' || activeTab === 'labs') && (
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 mb-8 flex gap-3">
+                        <div className="relative flex-grow">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                            <input type="text" placeholder="Search title or member..." className="w-full pl-10 pr-4 py-2 border-none rounded-xl outline-none bg-slate-50 text-sm font-medium focus:ring-1 focus:ring-[#6366F1]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
                         </div>
-                    ) : (
-                        filteredProjects.map((project) => (
-                            <div key={project._id} className="bg-white rounded-xl shadow-md border border-gray-200 flex flex-col hover:shadow-lg transition">
-                                <div className={`h-2 ${project.status === 'Approved' ? 'bg-green-500' : project.status === 'Rejected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-                                <div className="p-6 flex-grow flex flex-col">
-                                    <div className="flex justify-between mb-2">
-                                        <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${project.status==='Approved'?'bg-green-100 text-green-700':project.status==='Rejected'?'bg-red-100 text-red-700':'bg-yellow-100 text-yellow-700'}`}>{project.status}</span>
-                                        <span className="text-xs text-gray-400">{new Date(project.createdAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-800 mb-1 line-clamp-1">{project.title}</h3>
-                                    <p className="text-sm text-gray-500 mb-4">{project.student?.name} • {project.department}</p>
-                                    
-                                    <div className="grid grid-cols-2 gap-2 mb-4 text-xs text-gray-500 flex-grow">
-                                        <div><span className="font-bold">Program:</span> {project.program}</div>
-                                        <div><span className="font-bold">Year:</span> {project.projectYear}</div>
-                                        {project.mentor && <div className="col-span-2"><span className="font-bold">Mentor:</span> {project.mentor}</div>}
-                                    </div>
+                        <select className="px-4 py-2 border-none rounded-xl bg-slate-50 outline-none text-[11px] font-semibold uppercase tracking-wider cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                            <option value="All">All Records</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                )}
 
-                                    {project.fileUrl ? (
-                                        <button 
-                                            onClick={() => handleViewPdf(project.fileUrl)}
-                                            className="flex items-center justify-center gap-2 w-full bg-blue-50 text-blue-600 py-2 rounded-lg font-bold text-sm mb-4 hover:bg-blue-100 transition border border-blue-200"
-                                        >
-                                            <Eye size={16} /> Preview Synopsis
-                                        </button>
-                                    ) : (
-                                        <div className="text-center text-gray-400 text-sm italic mb-4 py-2 bg-gray-50 rounded-lg border">No Synopsis</div>
-                                    )}
-
-                                    {project.status === 'Pending' && (
-                                        <div className="grid grid-cols-2 gap-3 mt-auto">
-                                            <button onClick={() => handleAction(project._id, 'Approved')} disabled={actionLoading} className="flex items-center justify-center gap-2 bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 transition"><Check size={16} /> Approve</button>
-                                            <button onClick={() => handleAction(project._id, 'Rejected')} disabled={actionLoading} className="flex items-center justify-center gap-2 bg-red-500 text-white py-2 rounded font-bold hover:bg-red-600 transition"><X size={16} /> Reject</button>
+                {/* Main Dynamic Workspace */}
+                <div className="animate-in fade-in duration-500">
+                    {activeTab === 'projects' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredProjects.map((p) => (
+                                <div key={p._id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#6366F1] transition-all">
+                                    <div className={`h-1 ${p.status === 'Approved' ? 'bg-[#10B981]' : p.status === 'Rejected' ? 'bg-red-400' : 'bg-[#F59E0B]'}`}></div>
+                                    <div className="p-6 flex-grow flex flex-col">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h3 className="text-base font-semibold text-slate-800 line-clamp-1 leading-tight">{p.title}</h3>
+                                            <button onClick={() => handleDeleteProject(p._id)} disabled={actionLoading === p._id} className="text-slate-300 hover:text-red-500 transition-colors">
+                                                <Trash2 size={16}/>
+                                            </button>
                                         </div>
-                                    )}
+                                        <p className="text-[10px] text-[#6366F1] font-bold uppercase tracking-wider mb-4">{p.student ? p.student.name : "Member"} • {p.domain}</p>
+                                        
+                                        {p.fileUrl && (
+                                            <button onClick={() => handleViewPdf(p.fileUrl)} className="w-full bg-slate-50 text-slate-600 py-2 rounded-lg font-semibold text-[11px] mb-6 hover:bg-indigo-50 hover:text-[#6366F1] transition-colors border border-slate-100 uppercase tracking-widest">
+                                                <FileText size={12} className="inline mr-2"/> Review Synopsis
+                                            </button>
+                                        )}
+
+                                        {p.status === 'Pending' && (
+                                            <div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-slate-50">
+                                                <button onClick={() => handleProjectAction(p._id, 'Approved')} disabled={actionLoading === p._id} className="bg-[#10B981] text-white py-2 rounded-lg font-semibold hover:bg-emerald-600 text-[11px] transition-colors uppercase">
+                                                    {actionLoading === p._id ? '...' : 'Approve'}
+                                                </button>
+                                                <button onClick={() => handleProjectAction(p._id, 'Rejected')} disabled={actionLoading === p._id} className="bg-slate-100 text-slate-500 py-2 rounded-lg font-semibold hover:bg-red-50 hover:text-red-500 text-[11px] transition-colors uppercase">
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            ))}
+                        </div>
                     )}
+
+                    {activeTab === 'labs' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredLabs.map((l) => (
+                                <div key={l._id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:border-[#6366F1] transition-all">
+                                    <div className={`h-1 ${l.status === 'Approved' ? 'bg-[#10B981]' : l.status === 'Rejected' ? 'bg-red-400' : 'bg-[#F59E0B]'}`}></div>
+                                    <div className="p-6 flex-grow flex flex-col">
+                                        <h3 className="text-base font-semibold text-slate-800 mb-1">{l.labName}</h3>
+                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mb-4">{l.student ? l.student.name : "Researcher"} • {l.date}</p>
+                                        <div className="bg-slate-50 p-3 rounded-xl text-xs text-slate-600 mb-6 border border-slate-100 italic leading-relaxed">
+                                            "{l.reason}"
+                                        </div>
+                                        
+                                        {l.status === 'Pending' && (
+                                            <div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-slate-50">
+                                                <button onClick={() => handleLabAction(l._id, 'Approved')} disabled={actionLoading === l._id} className="bg-[#10B981] text-white py-2 rounded-lg font-semibold hover:bg-emerald-600 text-[11px] transition-colors uppercase">
+                                                    Allocate
+                                                </button>
+                                                <button onClick={() => handleLabAction(l._id, 'Rejected')} disabled={actionLoading === l._id} className="bg-slate-100 text-slate-500 py-2 rounded-lg font-semibold hover:bg-red-50 hover:text-red-500 text-[11px] transition-colors uppercase">
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {activeTab === 'incoming' && <IncomingProposals />}
+                    {activeTab === 'approved' && <ApprovedTeams />}
                 </div>
             </div>
 
+            {/* Document Modal */}
             {selectedPdf && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in">
-                        <div className="flex justify-between items-center p-4 bg-gray-100 border-b">
-                            <h3 className="font-bold text-gray-700 flex items-center gap-2"><FileText size={20} className="text-green-600"/> Secure Viewer</h3>
-                            <button onClick={() => setSelectedPdf(null)} className="p-2 text-gray-500 hover:text-red-600 rounded-full"><X size={24}/></button>
+                <div className="fixed inset-0 z-[150] flex items-center justify-center bg-[#0B0F19]/80 backdrop-blur-md p-4">
+                    <div className="bg-white w-full max-w-5xl h-[90vh] rounded-[32px] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                        <div className="flex justify-between items-center px-8 py-5 bg-white border-b border-slate-100">
+                            <div>
+                                <h3 className="text-lg font-semibold text-[#0B0F19]">Document Review</h3>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium">Digital Research Archive</p>
+                            </div>
+                            <button onClick={() => setSelectedPdf(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
                         </div>
-                        <div className="flex-grow bg-gray-50">
-                            <iframe src={selectedPdf} className="w-full h-full" title="PDF Viewer" style={{ border: 'none' }}></iframe>
-                        </div>
+                        <iframe src={selectedPdf} className="w-full h-full" title="PDF Viewer"></iframe>
                     </div>
                 </div>
             )}

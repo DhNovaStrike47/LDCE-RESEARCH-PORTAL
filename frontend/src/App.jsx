@@ -4,13 +4,20 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 // Import Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/Dashboard'; // Public Research Dashboard
 import AddProject from './pages/AddProject';
 import Analytics from './pages/Analytics';
 import LabBooking from './pages/LabBooking';
+import Collaborations from './pages/Collaborations';
+import EditProject from './pages/EditProject';
+
+// Import Role-Based Dashboardsz
 import FacultyDashboard from './pages/FacultyDashboard';
-import DeanDashboard from './pages/DeanDashboard';
+import StudentDashboard from './pages/StudentDashboard';
+import DeanDashboard from './pages/DeanDashboard'; // 🟢 ENSURE THIS FILE EXISTS
+
 import ProtectedRoute from './components/ProtectedRoute';
+import IncomingProposals from './components/IncomingProposals';
 
 function App() {
   return (
@@ -20,15 +27,47 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* --- SHARED ROUTES --- */}
+        {/* --- COMMON DASHBOARD (Home) --- */}
         <Route 
           path="/" 
           element={
-            <ProtectedRoute allowedRoles={['student', 'faculty', 'principal']}>
+            <ProtectedRoute allowedRoles={['student', 'faculty', 'principal', 'admin']}>
               <Dashboard />
             </ProtectedRoute>
           } 
         />
+
+        {/* --- 🟢 STUDENT DASHBOARD --- */}
+        <Route 
+          path="/StudentDashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* --- 🟢 FACULTY DASHBOARD --- */}
+        <Route 
+          path="/FacultyDashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['faculty']}>
+              <FacultyDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* --- 🟢 PRINCIPAL/ADMIN DASHBOARD (Fixes the error) --- */}
+        <Route 
+          path="/DeanDashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['principal', 'admin']}>
+              <DeanDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* --- SHARED FEATURES --- */}
         <Route 
           path="/analytics" 
           element={
@@ -37,9 +76,6 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        {/* ❌ Removed: <Route path="/profile" ... /> (It is now a popup) */}
-
-        {/* --- STUDENT & FACULTY ROUTES --- */}
         <Route 
           path="/add-project" 
           element={
@@ -56,27 +92,26 @@ function App() {
             </ProtectedRoute>
           } 
         />
-
-        {/* --- FACULTY & PRINCIPAL ROUTES --- */}
         <Route 
-          path="/faculty" 
+          path="/collaborations" 
           element={
-            <ProtectedRoute allowedRoles={['faculty', 'principal']}>
-              <FacultyDashboard />
+            <ProtectedRoute allowedRoles={['student', 'faculty']}>
+              <Collaborations />
             </ProtectedRoute>
           } 
         />
 
-        {/* --- PRINCIPAL ONLY ROUTE --- */}
         <Route 
-          path="/principal" 
+          path="/edit-project/:id" 
           element={
-            <ProtectedRoute allowedRoles={['principal']}>
-              <DeanDashboard />
+            <ProtectedRoute allowedRoles={['student']}>
+              <EditProject />
             </ProtectedRoute>
           } 
         />
 
+        <Route path="/incoming-proposals" 
+        element={<IncomingProposals />} />
       </Routes>
     </Router>
   );
