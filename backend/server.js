@@ -16,11 +16,12 @@ const app = express();
 connectDB();
 
 app.use(cors({
-    // Replace the placeholder with your actual Vercel URL from the error screenshot
-    origin: ["http://localhost:5173", "https://ldce-research-portal.vercel.app"],
+    origin: [
+        "http://localhost:5173",
+        "https://ldce-research-portal.vercel.app" // Ensure this is exactly your Vercel URL
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"]
+    credentials: true
 }));
 
 app.use(express.json());
@@ -33,7 +34,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/labs', labRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/collaboration', require('./routes/collaboration'));
+app.use('/api/milestones', require('./routes/milestoneRoutes'));
 app.use('/api/collaboration', collaborationRoutes);
 
 const PORT = process.env.PORT || 5000;

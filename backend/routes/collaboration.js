@@ -10,8 +10,8 @@ const protect = require('../middleware/authmiddleware');
 const transporter = nodemailer.createTransport({
     service: 'gmail', // 🟢 Use 'service' instead of host/port
     auth: {
-        user: 'dhanvi8686@gmail.com',
-        pass: 'dlfa ujes wyqz plka'
+        user: 'process.env.EMAIL_USER',
+        pass: 'process.env.EMAIL_PASS'
     }
 });
 

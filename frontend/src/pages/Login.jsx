@@ -31,10 +31,22 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
+        <div className="relative min-h-screen bg-[#F8FAFC] flex flex-col font-sans overflow-hidden">
             <Navbar />
-            <div className="flex-grow flex justify-center items-center p-6">
-                <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm w-full max-w-sm">
+            <div className="relative flex-grow flex justify-center items-center p-6">
+            {/* 🟢 Campus Background Layer: Light Capacity */}
+            <div 
+                className="absolute inset-0 z-0"
+                style={{
+                    backgroundImage: `url('/images.jpg')`, // Ensure this matches your public folder path
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    opacity: 0.15, // Very low capacity for a light feel
+                }}
+            />
+
+
+                <div className="relative z-10 bg-white p-8 rounded-2xl border border-slate-200 shadow-xl w-full max-w-sm backdrop-blur-sm">
                     <h2 className="text-xl font-semibold mb-2 text-[#0B0F19]">Institutional Login</h2>
                     <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mb-8">Research & Academic Portal</p>
                     

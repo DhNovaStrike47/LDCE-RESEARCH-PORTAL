@@ -4,6 +4,7 @@ const Project = require('../models/project');
 const User = require('../models/user');
 const protect = require('../middleware/authmiddleware');
 const multer = require('multer');
+const fs = require('fs');
 const path = require('path');
 const sendEmail = require('../utils/sendEmail');
 
@@ -101,11 +102,21 @@ router.delete('/:id', protect, async(req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ message: "Not found" });
-        const canDelete = (project.student.toString() === req.user.id) || (req.user.role === 'faculty') || (req.user.role === 'principal');
+
+        // Check Permissions
+        const canDelete = (project.student.toString() === req.user.id) || (req.user.role === 'faculty');
         if (!canDelete) return res.status(403).json({ message: "Denied" });
 
+        // 🟢 FIX: Remove the physical file if it exists
+        if (project.fileUrl) {
+            const filePath = path.join(__dirname, '..', project.fileUrl);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
         await Project.findByIdAndDelete(req.params.id);
-        res.json({ message: "Deleted" });
+        res.json({ message: "Project and associated file deleted." });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
