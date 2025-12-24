@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "cors": "^2.8.5",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2"
   }

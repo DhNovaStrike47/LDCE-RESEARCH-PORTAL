@@ -16,8 +16,11 @@ const app = express();
 connectDB();
 
 app.use(cors({
-    origin: ["http://localhost:5173", "https://your-frontend-app-name.vercel.app"],
-    credentials: true
+    // Replace the placeholder with your actual Vercel URL from the error screenshot
+    origin: ["http://localhost:5173", "https://ldce-research-portal.vercel.app"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(express.json());
